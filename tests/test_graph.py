@@ -13,7 +13,15 @@ from argus.synth.wallets import generate_wallets
 
 
 def _small_canonical_df(tmp_path: Path, seed: int = 11):
-    cfg = SynthConfig(random_seed=seed, num_entities=20, num_wallets=100, num_transactions=1000, ip_noise=0.1)
+    cfg = SynthConfig(
+        random_seed=seed,
+        num_entities=20,
+        num_wallets=100,
+        num_transactions=1000,
+        ip_noise=0.1,
+        heuristic_break_rate=0.1,
+        mixer_fraction=0.02,
+    )
     rng = random.Random(cfg.random_seed)
     entities = generate_entities(cfg, rng)
     wallets = generate_wallets(cfg, rng, entities)

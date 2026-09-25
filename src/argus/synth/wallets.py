@@ -6,9 +6,17 @@ from dataclasses import dataclass
 from argus.synth.config import SynthConfig
 from argus.synth.entities import Entity
 
-# documented approx: exchanges custody far more wallets than an individual licit entity
-EXCHANGE_WALLET_WEIGHT = 50.0
-LICIT_WALLET_WEIGHT = 1.0
+# documented approx: relative wallet-count weight per entity_type. Exchanges custody
+# the most; mixers need enough of their own wallets to supply CoinJoin participants;
+# darknet needs enough for a multi-hop peeling chain; ransomware needs a handful for
+# its collect/layer stages.
+WALLET_WEIGHTS = {
+    "licit": 1.0,
+    "exchange": 50.0,
+    "ransomware": 3.0,
+    "darknet": 8.0,
+    "mixer": 20.0,
+}
 
 
 @dataclass(frozen=True)
@@ -18,10 +26,7 @@ class Wallet:
 
 
 def generate_wallets(config: SynthConfig, rng: random.Random, entities: list[Entity]) -> list[Wallet]:
-    weights = [
-        EXCHANGE_WALLET_WEIGHT if e.entity_type == "exchange" else LICIT_WALLET_WEIGHT
-        for e in entities
-    ]
+    weights = [WALLET_WEIGHTS[e.entity_type] for e in entities]
     total_weight = sum(weights)
     counts = [int(w / total_weight * config.num_wallets) for w in weights]
 

@@ -1,8 +1,9 @@
-"""Baseline (v1) transaction generation.
-
-No illicit patterns yet: every input of a transaction comes from a single sender
-wallet (no CoinJoin-style multi-party inputs), and outputs are a plain payment plus
-an optional change-back-to-sender output. Peeling/CoinJoin arrive in a later phase.
+"""Baseline transaction generation: every input comes from a single sender wallet
+(no CoinJoin-style multi-party inputs), and outputs are a plain payment plus an
+optional change-back-to-sender output. Illicit structural patterns (peeling chains,
+CoinJoin rounds, ransomware lifecycles) are generated separately by
+argus.synth.patterns and appended to this module's output — this module's own
+contract (exactly num_transactions rows) is unchanged by that.
 """
 from __future__ import annotations
 
@@ -57,6 +58,26 @@ def _split_amount(total: float, parts: int, rng: random.Random) -> list[float]:
     return [round(cut, 8), round(total - cut, 8)]
 
 
+def _network_fields(entity: Entity, config: SynthConfig, rng: random.Random) -> tuple[str, int, str]:
+    """Returns (src_ip, asn, geo_country) from entity's home subnet, with an
+    ip_noise chance of instead drawing from a different network in the pool.
+    Shared with argus.synth.patterns so planted-pattern transactions get the same
+    IP-affinity behavior as baseline ones.
+    """
+    if rng.random() < config.ip_noise:
+        noise_net = rng.choice(NETWORK_POOL)
+        return random_ip_and_geo(noise_net, None, rng)
+    return random_ip_and_geo(entity.home_network, entity.home_third_octet, rng)
+
+
+def _random_peer_ip(rng: random.Random) -> str:
+    """A destination peer IP, unrelated to any entity's affinity — simulates the
+    tx's next relay hop on the P2P network."""
+    dst_net = rng.choice(NETWORK_POOL)
+    ip, _, _ = random_ip_and_geo(dst_net, None, rng)
+    return ip
+
+
 def generate_transactions(
     config: SynthConfig,
     rng: random.Random,
@@ -91,16 +112,8 @@ def generate_transactions(
                 recipient = sender  # simulated change output
             output_addresses.append(recipient.wallet_id)
 
-        if rng.random() < config.ip_noise:
-            noise_net = rng.choice(NETWORK_POOL)
-            src_ip, asn, geo_country = random_ip_and_geo(noise_net, None, rng)
-        else:
-            src_ip, asn, geo_country = random_ip_and_geo(
-                sender_entity.home_network, sender_entity.home_third_octet, rng
-            )
-
-        dst_net = rng.choice(NETWORK_POOL)
-        dst_ip, _, _ = random_ip_and_geo(dst_net, None, rng)
+        src_ip, asn, geo_country = _network_fields(sender_entity, config, rng)
+        dst_ip = _random_peer_ip(rng)
 
         txid = hashlib.sha256(f"{config.random_seed}-tx-{i}".encode()).hexdigest()
 

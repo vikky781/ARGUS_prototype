@@ -13,6 +13,8 @@ class SynthConfig:
     num_wallets: int
     num_transactions: int
     ip_noise: float
+    heuristic_break_rate: float
+    mixer_fraction: float
 
 
 def load_config(path: Path) -> SynthConfig:
@@ -24,4 +26,6 @@ def load_config(path: Path) -> SynthConfig:
         num_wallets=raw["num_wallets"],
         num_transactions=raw["num_transactions"],
         ip_noise=raw["ip_noise"],
+        heuristic_break_rate=raw["heuristic_break_rate"],
+        mixer_fraction=raw["mixer_fraction"],
     )

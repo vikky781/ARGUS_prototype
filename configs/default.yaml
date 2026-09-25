@@ -1,12 +1,12 @@
 # Values below are tuned per-phase as each pipeline stage is implemented.
-# heuristic_break_rate / mixer_fraction / geoip_mmdb_path are still unused placeholders:
-# they belong to the illicit-patterns and ingestion phases, not yet built.
+# geoip_mmdb_path is still an unused placeholder — this repo's ingestion enrichment
+# is fully offline/synthetic (see src/argus/ingest/geoip.py), no real database used.
 
 random_seed: 42
 num_entities: 2000
 num_wallets: 50000
 num_transactions: 200000
 ip_noise: 0.05
-heuristic_break_rate: 0
-mixer_fraction: 0
+heuristic_break_rate: 0.1
+mixer_fraction: 0.02
 geoip_mmdb_path: null

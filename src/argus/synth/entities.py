@@ -6,25 +6,43 @@ from dataclasses import dataclass
 from argus.synth.config import SynthConfig
 from argus.synth.networks import NETWORK_POOL, Network
 
-# v1 baseline only — ransomware/darknet/mixer types arrive with the illicit-patterns phase.
-ENTITY_TYPES_V1 = ("licit", "exchange")
-EXCHANGE_FRACTION = 0.05  # documented approx: exchanges are rare but wallet-heavy (see wallets.py)
+# Documented approx fractions. exchange/ransomware/darknet are fixed constants;
+# mixer is config-driven (mixer_fraction) since it's a swept difficulty knob —
+# see docs/contracts.md's ground_truth/entities.parquet entity_type values.
+EXCHANGE_FRACTION = 0.05
+RANSOMWARE_FRACTION = 0.02
+DARKNET_FRACTION = 0.03
 BROADCAST_SPREAD_HOURS = 2.5  # documented approx std-dev of an entity's broadcast-hour clustering
 
 
 @dataclass(frozen=True)
 class Entity:
     entity_id: str
-    entity_type: str  # "licit" | "exchange" (v1 baseline only)
+    entity_type: str  # "licit" | "exchange" | "ransomware" | "darknet" | "mixer"
     home_network: Network  # this entity's IP subnet affinity
     home_third_octet: int  # picks a specific /24 within home_network's /16
     peak_hour: int  # 0-23, center of this entity's broadcast-time profile
 
 
+def _pick_entity_type(config: SynthConfig, rng: random.Random) -> str:
+    r = rng.random()
+    cumulative = 0.0
+    for entity_type, fraction in (
+        ("exchange", EXCHANGE_FRACTION),
+        ("ransomware", RANSOMWARE_FRACTION),
+        ("darknet", DARKNET_FRACTION),
+        ("mixer", config.mixer_fraction),
+    ):
+        cumulative += fraction
+        if r < cumulative:
+            return entity_type
+    return "licit"
+
+
 def generate_entities(config: SynthConfig, rng: random.Random) -> list[Entity]:
     entities = []
     for i in range(config.num_entities):
-        entity_type = "exchange" if rng.random() < EXCHANGE_FRACTION else "licit"
+        entity_type = _pick_entity_type(config, rng)
         home_network = rng.choice(NETWORK_POOL)
         home_third_octet = rng.randint(0, 255)
         peak_hour = rng.randint(0, 23)

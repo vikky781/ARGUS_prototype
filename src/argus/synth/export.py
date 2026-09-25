@@ -13,6 +13,7 @@ import pandas as pd
 from lxml import etree
 
 from argus.synth.entities import Entity
+from argus.synth.patterns import PatternRecord
 from argus.synth.wallets import Wallet
 
 FIELDS = [
@@ -95,6 +96,23 @@ def write_ground_truth_entities(wallets: list[Wallet], entities: list[Entity], p
                 "entity_type": entities_by_id[w.entity_id].entity_type,
             }
             for w in wallets
+        ]
+    )
+    df.to_parquet(path, index=False)
+
+
+def write_ground_truth_seeds(seed_wallet_ids: list[str], path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    df = pd.DataFrame({"wallet_id": seed_wallet_ids})
+    df.to_parquet(path, index=False)
+
+
+def write_ground_truth_patterns(patterns: list[PatternRecord], path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    df = pd.DataFrame(
+        [
+            {"pattern_id": p.pattern_id, "type": p.type, "txids": p.txids, "wallets": p.wallets}
+            for p in patterns
         ]
     )
     df.to_parquet(path, index=False)
