@@ -22,8 +22,8 @@ test:
 data:
 	PYTHONPATH=src "$(PY)" -m argus.synth.cli
 
-ingest:
-	@echo "not implemented yet"
+ingest: data
+	PYTHONPATH=src "$(PY)" -m argus.ingest.cli
 
 graph:
 	@echo "not implemented yet"
