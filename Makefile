@@ -20,7 +20,7 @@ test:
 	@"$(PY)" -m pytest tests/ -v; ec=$$?; if [ $$ec -eq 5 ]; then exit 0; else exit $$ec; fi
 
 data:
-	@echo "not implemented yet"
+	PYTHONPATH=src "$(PY)" -m argus.synth.cli
 
 ingest:
 	@echo "not implemented yet"
