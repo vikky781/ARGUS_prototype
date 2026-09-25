@@ -25,8 +25,8 @@ data:
 ingest: data
 	PYTHONPATH=src "$(PY)" -m argus.ingest.cli
 
-graph:
-	@echo "not implemented yet"
+graph: ingest
+	PYTHONPATH=src "$(PY)" -m argus.graph.cli
 
 er:
 	@echo "not implemented yet"
