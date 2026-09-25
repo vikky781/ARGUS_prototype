@@ -1,0 +1,10 @@
+# Placeholder config. Real values are tuned in later prompts — do not invent tuned defaults here.
+
+random_seed: 0
+num_entities: 0
+num_wallets: 0
+num_transactions: 0
+ip_noise: 0
+heuristic_break_rate: 0
+mixer_fraction: 0
+geoip_mmdb_path: null

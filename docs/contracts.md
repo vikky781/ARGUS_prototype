@@ -1,0 +1,125 @@
+# ARGUS Data Contracts
+
+These are the exact data contracts between pipeline stages. Do not add, remove, or reinterpret
+any column without updating this document and getting explicit sign-off — downstream stages are
+written against these schemas verbatim.
+
+## `canonical/transactions.parquet`
+
+Producer: `ingest`. One row per transaction event.
+
+- `txid` (string, primary key)
+- `timestamp` (datetime, UTC)
+- `src_ip` (string)
+- `dst_ip` (string)
+- `src_port` (int)
+- `dst_port` (int)
+- `geo_country` (string)
+- `asn` (int)
+- `input_addresses` (array<string>)
+- `input_amounts` (array<float>)
+- `output_addresses` (array<string>)
+- `output_amounts` (array<float>)
+- `fee` (float)
+- `script_type` (string)
+
+## Graph schema
+
+Artifacts: `artifacts/graph.pkl` + `artifacts/graph_edges.parquet`. Producer: `graph`.
+
+**Nodes:** `Wallet`, `Transaction`, `IP`, `ASN`
+
+**Edges:**
+
+| Edge | Direction | Meaning | Attrs |
+|---|---|---|---|
+| `FUNDS` | `Wallet -> Tx` | tx input | `amount` |
+| `PAYS` | `Tx -> Wallet` | tx output | `amount` |
+| `BROADCAST_VIA` | `Tx -> IP` | first-seen relay | `timestamp`, `port` |
+| `RESOLVES_TO` | `IP -> ASN` | geo enrichment | static |
+| `CO_SPEND` | `Wallet <-> Wallet` | ER pass 1, Dev A | `confidence` |
+| `SAME_ENTITY` | `Wallet <-> Wallet` | ER pass 2, Dev B — **NOT produced in this repo** | `confidence` ∈ [0,1] |
+
+This repo produces `FUNDS`, `PAYS`, `BROADCAST_VIA`, `RESOLVES_TO` (from graph build) and
+`CO_SPEND` (from ER pass 1). `SAME_ENTITY` is never produced here.
+
+## `ground_truth/entities.parquet`
+
+Producer: `synth`.
+
+- `wallet_id`
+- `entity_id`
+- `entity_type` (licit/ransomware/darknet/mixer/exchange)
+
+## `ground_truth/seeds.parquet`
+
+Producer: `synth`. Known-illicit seed set, ~5-10% of illicit wallets.
+
+- `wallet_id`
+
+## `ground_truth/patterns.parquet`
+
+Producer: `synth`.
+
+- `pattern_id`
+- `type` (peeling/coinjoin)
+- `txids[]`
+- `wallets[]`
+
+## `artifacts/entities.parquet`
+
+Producer: ER pass 1 only, in this repo.
+
+- `wallet_id`
+- `entity_id`
+- `source` (always `"pass1"` here)
+- `conf`
+- `merge_split_log_ref`
+
+## `artifacts/node_features.parquet`
+
+Producer: `features`.
+
+- `node_id`
+- `node_type`
+- `f_*` numeric columns
+- no NaNs
+
+## `artifacts/scores_pattern.parquet`
+
+Producer: `detectors/peeling.py` + `detectors/coinjoin.py` (classical only).
+
+- `node_id`
+- `score` ∈ [0,1]
+- `reason_code`
+- `evidence_json`
+
+## `artifacts/scores_risk.parquet`
+
+Producer: `detectors/risk_ppr.py`.
+
+- `node_id`
+- `score` ∈ [0,1]
+- `reason_code`
+- `evidence_json`
+
+## `artifacts/scores_anomaly.parquet`
+
+**NOT produced in this repo** (Dev B's `models/anomaly.py`). Fusion will consume an
+explicitly-labeled placeholder for this artifact until Dev B's work exists.
+
+## `artifacts/alerts.json`
+
+Producer: `fusion`.
+
+- `alert_id`
+- `node_id`
+- `final_score`
+- `components` `{pattern, risk, anomaly}`
+- `evidence` `{nodes[], edges[]}`
+- `rationale`
+
+## Hard rule
+
+Every head must emit `reason_code` + `evidence_json` — no exceptions, no retrofitting later. This
+is a stated hard rule from the project plan.
