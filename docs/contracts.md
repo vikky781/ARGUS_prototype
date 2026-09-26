@@ -100,8 +100,17 @@ Producer: `detectors/risk_ppr.py`.
 
 - `node_id`
 - `score` ∈ [0,1]
-- `reason_code`
+- `reason_code` (`SEED_DIST=n`)
 - `evidence_json`
+
+**Scope limitation (permanent, by design):** the architecture doc specifies personalized
+PageRank propagation over `CO_SPEND` + `SAME_ENTITY` edges. This repo never produces
+`SAME_ENTITY` edges — that is Dev B's ER pass 2 (`er/embed_cluster.py`, out of scope here).
+`detectors/risk_ppr.py` propagates over `CO_SPEND` only. As of Phase 3, ER pass 1 also
+produces zero `CO_SPEND` edges on this dataset (see the Phase 2 ER precision/recall
+diagnosis), so this head currently reduces to reporting the seed set itself
+(`SEED_DIST=0` for every row) with no further graph propagation — not a bug in
+`risk_ppr.py`, a direct consequence of the upstream `CO_SPEND` count.
 
 ## `artifacts/scores_anomaly.parquet`
 

@@ -1,6 +1,8 @@
-"""Converts peeling/coinjoin detector output into artifacts/scores_pattern.parquet
+"""Converts peeling/coinjoin detector output into scores_pattern.parquet-shaped
 rows: node_id, score, reason_code, evidence_json — per docs/contracts.md's hard
-rule that every head emits reason_code + evidence_json, no exceptions.
+rule that every head emits reason_code + evidence_json, no exceptions. The
+same write_scores() writer is reused for scores_risk.parquet (identical
+4-column schema) — see argus.detectors.risk_ppr.
 
 This artifact currently contains ONLY classical (structural) detections from
 argus.detectors.peeling and argus.detectors.coinjoin. Dev B's
@@ -60,7 +62,7 @@ def coinjoin_round_rows(rounds: list[CoinjoinRound]) -> list[dict]:
     return rows
 
 
-def write_scores_pattern(rows: list[dict], path: Path) -> None:
+def write_scores(rows: list[dict], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     df = pd.DataFrame(rows, columns=["node_id", "score", "reason_code", "evidence_json"])
     df.to_parquet(path, index=False)
