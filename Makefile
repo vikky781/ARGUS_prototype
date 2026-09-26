@@ -31,8 +31,8 @@ graph: ingest
 er: graph
 	PYTHONPATH=src "$(PY)" -m argus.er.cli
 
-features:
-	@echo "not implemented yet"
+features: er
+	PYTHONPATH=src "$(PY)" -m argus.features.cli
 
 detect:
 	@echo "not implemented yet"

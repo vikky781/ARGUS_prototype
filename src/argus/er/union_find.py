@@ -52,7 +52,7 @@ class UnionFind:
         return members
 
 
-def _is_coinjoin_like(input_addresses: list[str], output_amounts: list[float]) -> bool:
+def is_coinjoin_like(input_addresses: list[str], output_amounts: list[float]) -> bool:
     """Many distinct FUNDS inputs AND many near-equal-value PAYS outputs. Allows
     at most one perturbed output (heuristic_break_rate may have broken exact
     equality on one), matching the tolerance used to plant/verify these rounds.
@@ -85,7 +85,7 @@ def resolve_entities(df: pd.DataFrame) -> tuple[UnionFind, list[tuple[str, str, 
         output_addresses = list(row.output_addresses)
         output_amounts = list(row.output_amounts)
 
-        if _is_coinjoin_like(input_addresses, output_amounts):
+        if is_coinjoin_like(input_addresses, output_amounts):
             continue
 
         # Heuristic 1: common-input-ownership — wallets co-spent as inputs on
