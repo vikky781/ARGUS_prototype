@@ -34,8 +34,8 @@ er: graph
 features: er
 	PYTHONPATH=src "$(PY)" -m argus.features.cli
 
-detect:
-	@echo "not implemented yet"
+detect: features
+	PYTHONPATH=src "$(PY)" -m argus.detectors.cli
 
 fusion:
 	@echo "not implemented yet"
