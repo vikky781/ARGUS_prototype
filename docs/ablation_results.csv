@@ -1,0 +1,7 @@
+noise_level,ip_noise,condition,er_precision,er_recall,er_f1,peeling_recall,peeling_precision,coinjoin_recall,coinjoin_precision,risk_precision_at_50
+low,0.01,dual_layer,1.0,0.0,0.0,1.0,1.0,1.0,1.0,1.0
+low,0.01,on_chain_only,1.0,0.0,0.0,1.0,1.0,1.0,1.0,1.0
+medium,0.05,dual_layer,1.0,0.0,0.0,1.0,1.0,1.0,1.0,1.0
+medium,0.05,on_chain_only,1.0,0.0,0.0,1.0,1.0,1.0,1.0,1.0
+high,0.2,dual_layer,1.0,0.0,0.0,1.0,1.0,1.0,1.0,1.0
+high,0.2,on_chain_only,1.0,0.0,0.0,1.0,1.0,1.0,1.0,1.0

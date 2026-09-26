@@ -40,8 +40,8 @@ detect: features
 fusion: detect
 	PYTHONPATH=src "$(PY)" -m argus.fusion.cli
 
-eval:
-	@echo "not implemented yet"
+eval: graph
+	PYTHONPATH=src "$(PY)" -m argus.eval.cli
 
 # data -> ingest -> graph -> er -> features -> detect -> fusion, via the
 # existing dependency chain above. Named "pipeline", not "demo": there is no
