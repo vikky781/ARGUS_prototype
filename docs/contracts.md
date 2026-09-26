@@ -114,8 +114,16 @@ diagnosis), so this head currently reduces to reporting the seed set itself
 
 ## `artifacts/scores_anomaly.parquet`
 
-**NOT produced in this repo** (Dev B's `models/anomaly.py`). Fusion will consume an
-explicitly-labeled placeholder for this artifact until Dev B's work exists.
+Producer: `fusion/_anomaly_placeholder.py` — **NOT a real anomaly model**. Dev B's
+`models/anomaly.py` (graph autoencoder) is out of scope in this repo. This file exists
+only so `fusion/blend.py` has a contract-valid input to read: every node gets a fixed
+neutral score of 0.5, `reason_code=ANOMALY_PLACEHOLDER`. When Dev B's real model lands,
+it replaces this file's producer; `blend.py` does not need to change.
+
+- `node_id`
+- `score` ∈ [0,1] (always exactly 0.5)
+- `reason_code` (always `ANOMALY_PLACEHOLDER`)
+- `evidence_json`
 
 ## `artifacts/alerts.json`
 

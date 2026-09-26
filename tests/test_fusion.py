@@ -1,0 +1,105 @@
+import random
+
+import pandas as pd
+
+from argus.detectors.coinjoin import detect_coinjoin_rounds
+from argus.detectors.peeling import detect_peeling_chains
+from argus.detectors.risk_ppr import compute_risk_scores, risk_score_rows
+from argus.detectors.scores import coinjoin_round_rows, peeling_chain_rows
+from argus.fusion._anomaly_placeholder import write_anomaly_placeholder
+from argus.fusion.blend import ALERT_THRESHOLD, build_alerts, component_table, compute_final_scores
+from argus.graph.build import build_graph
+from argus.ingest.pipeline import run_ingest
+from argus.synth.config import SynthConfig
+from argus.synth.corrupt import inject_corruption
+from argus.synth.entities import generate_entities
+from argus.synth.export import write_csv
+from argus.synth.patterns import generate_illicit_patterns
+from argus.synth.seeds import generate_seed_wallets
+from argus.synth.transactions import generate_transactions
+from argus.synth.wallets import generate_wallets
+
+
+def _pipeline_outputs(tmp_path, seed: int = 41):
+    cfg = SynthConfig(
+        random_seed=seed,
+        num_entities=1000,
+        num_wallets=15000,
+        num_transactions=15000,
+        ip_noise=0.05,
+        heuristic_break_rate=0.1,
+        mixer_fraction=0.05,
+    )
+    rng = random.Random(cfg.random_seed)
+    entities = generate_entities(cfg, rng)
+    wallets = generate_wallets(cfg, rng, entities)
+    baseline = generate_transactions(cfg, rng, entities, wallets)
+    pattern_rows, _ = generate_illicit_patterns(cfg, rng, entities, wallets)
+    corrupted_baseline = inject_corruption(baseline, rng)
+    all_rows = corrupted_baseline + pattern_rows
+    seed_wallets = generate_seed_wallets(rng, entities, wallets)
+
+    csv_path = tmp_path / "transactions.csv"
+    write_csv(all_rows, csv_path)
+    df = run_ingest(csv_path, "csv", tmp_path / "rejects.log")
+    g = build_graph(df)
+
+    chains = detect_peeling_chains(g)
+    rounds = detect_coinjoin_rounds(g)
+    scores_pattern = pd.DataFrame(
+        peeling_chain_rows(chains) + coinjoin_round_rows(rounds),
+        columns=["node_id", "score", "reason_code", "evidence_json"],
+    )
+
+    risk_scores = compute_risk_scores(g, seed_wallets)
+    scores_risk = pd.DataFrame(
+        risk_score_rows(risk_scores), columns=["node_id", "score", "reason_code", "evidence_json"]
+    )
+
+    anomaly_path = tmp_path / "scores_anomaly.parquet"
+    write_anomaly_placeholder(g, anomaly_path)
+    scores_anomaly = pd.read_parquet(anomaly_path)
+
+    ground_truth_entities_path = tmp_path / "gt_entities.parquet"
+    pd.DataFrame(
+        [{"wallet_id": w.wallet_id, "entity_id": w.entity_id} for w in wallets]
+    ).merge(
+        pd.DataFrame([{"entity_id": e.entity_id, "entity_type": e.entity_type} for e in entities]),
+        on="entity_id",
+    ).to_parquet(ground_truth_entities_path, index=False)
+    ground_truth_entities = pd.read_parquet(ground_truth_entities_path)
+
+    return scores_pattern, scores_risk, scores_anomaly, ground_truth_entities
+
+
+def test_alerts_have_evidence_rationale_and_valid_scores(tmp_path):
+    scores_pattern, scores_risk, scores_anomaly, ground_truth_entities = _pipeline_outputs(tmp_path)
+
+    table = component_table(scores_pattern, scores_risk, scores_anomaly)
+    final_table, method = compute_final_scores(table, ground_truth_entities)
+    assert method in ("calibrated_logistic", "fallback_weighted_average")
+
+    alerts = build_alerts(final_table, scores_pattern, scores_risk, ALERT_THRESHOLD)
+    assert alerts
+
+    for alert in alerts:
+        assert 0.0 <= alert["final_score"] <= 1.0
+        assert alert["evidence"]["nodes"]
+        assert alert["rationale"]
+        assert alert["node_id"] in alert["evidence"]["nodes"]
+
+    scores = [a["final_score"] for a in alerts]
+    assert scores == sorted(scores, reverse=True)
+
+
+def test_fallback_blend_when_insufficient_labels():
+    table = pd.DataFrame(
+        {"node_id": ["a", "b", "c"], "pattern": [0.9, 0.1, 0.5], "risk": [0.8, 0.2, 0.5], "anomaly": [0.5, 0.5, 0.5]}
+    )
+    ground_truth_entities = pd.DataFrame({"wallet_id": [], "entity_type": []})  # no labels at all
+
+    final_table, method = compute_final_scores(table, ground_truth_entities)
+
+    assert method == "fallback_weighted_average"
+    expected = 0.5 * table["pattern"] + 0.4 * table["risk"] + 0.1 * table["anomaly"]
+    assert (final_table["final_score"] - expected).abs().max() < 1e-9

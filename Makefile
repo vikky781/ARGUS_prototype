@@ -37,11 +37,15 @@ features: er
 detect: features
 	PYTHONPATH=src "$(PY)" -m argus.detectors.cli
 
-fusion:
-	@echo "not implemented yet"
+fusion: detect
+	PYTHONPATH=src "$(PY)" -m argus.fusion.cli
 
 eval:
 	@echo "not implemented yet"
 
-pipeline:
-	@echo "not implemented yet"
+# data -> ingest -> graph -> er -> features -> detect -> fusion, via the
+# existing dependency chain above. Named "pipeline", not "demo": there is no
+# dashboard here (Dev B's, out of scope), so this is not a complete
+# end-user-facing deliverable, just the full Dev-A pipeline through alerts.json.
+pipeline: fusion
+	@echo "pipeline complete: data/artifacts/alerts.json"
